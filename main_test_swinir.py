@@ -57,9 +57,40 @@ def main():
     test_results['psnrb_y'] = []
     psnr, ssim, psnr_y, ssim_y, psnrb, psnrb_y = 0, 0, 0, 0, 0, 0
 
+    dir_lq = ''
+    if args.task in ['classical_sr', 'lightweight_sr']:
+        dir_lq = f'{args.task}_x{args.scale}'
+
+    # 003 real-world image sr
+    elif args.task in ['real_sr']:
+        dir_lq = f'{args.task}_x{args.scale}'
+
+    # 004 grayscale image denoising/ 005 color image denoising
+    elif args.task in ['gray_dn', 'color_dn']:
+        dir_lq = f'{args.task}_noise{args.noise}'
+
+    # 006 JPEG compression artifact reduction
+    elif args.task in ['jpeg_car', 'color_jpeg_car']:
+        dir_lq = f'{args.task}_jpeg{args.jpeg}'
+
+    dir_gt = os.path.join(folder, 'img_gt')
+    os.makedirs(dir_lq, exist_ok=True)
+    os.makedirs(dir_gt, exist_ok=True)
+
     for idx, path in enumerate(sorted(glob.glob(os.path.join(folder, '*')))):
+        if 'img_lq' in path or 'img_gt' in path:
+            continue
         # read image
         imgname, img_lq, img_gt = get_image_pair(args, path)  # image to HWC-BGR, float32
+ 
+        # save the lq and gt images to img_lq and img_gt folders
+        filename = os.path.basename(path)
+        save_path_lq = os.path.join(dir_lq, filename)
+        save_path_gt = os.path.join(dir_gt, filename)
+        to_uint8 = lambda output: (output * 255.0).round().astype(np.uint8)  # float32 to uint8
+        cv2.imwrite(f'{save_path_lq}', to_uint8(img_lq))
+        cv2.imwrite(f'{save_path_gt}', to_uint8(img_gt))
+
         img_lq = np.transpose(img_lq if img_lq.shape[2] == 1 else img_lq[:, :, [2, 1, 0]], (2, 0, 1))  # HCW-BGR to CHW-RGB
         img_lq = torch.from_numpy(img_lq).float().unsqueeze(0).to(device)  # CHW-RGB to NCHW-RGB
 
